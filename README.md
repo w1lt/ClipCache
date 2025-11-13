@@ -2,6 +2,8 @@
 
 A macOS menu bar app that intelligently caches your clipboard history, allowing you to paste multiple items in sequence with a single keyboard shortcut.
 
+![ClipCache](image.png)
+
 ## How It Works
 
 ClipCache monitors your clipboard and groups copied items into batches using a "copy window" system:
