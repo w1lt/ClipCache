@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct ClipCacheApp: App {
     @StateObject private var manager = ClipCacheManager()
+    
 
     var body: some Scene {
         MenuBarExtra {

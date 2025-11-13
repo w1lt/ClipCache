@@ -96,6 +96,7 @@ class ClipCacheManager: ObservableObject {
     private let defaultPasteCooldownMs: Double = 200.0
     
     private let hasShownFirstRunPermissionPromptKey = "hasShownFirstRunPermissionPrompt"
+    private let hasShownMoveToApplicationsPromptKey = "hasShownMoveToApplicationsPrompt"
     
     init() {
         // Check if we have a stored preference
@@ -115,6 +116,12 @@ class ClipCacheManager: ObservableObject {
         if openOnStartup {
             updateLoginItem()
         }
+        
+        // Check for move to Applications on init (menu bar apps might not trigger onAppear immediately)
+        // Delay slightly to ensure app is fully initialized
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.checkAndPromptToMoveToApplicationsIfNeeded()
+        }
     }
     
     func checkAndPromptForPermissionsIfNeeded() {
@@ -130,6 +137,89 @@ class ClipCacheManager: ObservableObject {
             UserDefaults.standard.set(true, forKey: hasShownFirstRunPermissionPromptKey)
         }
     }
+    
+    func checkAndPromptToMoveToApplicationsIfNeeded() {
+        // Check if we've already shown this prompt before
+        let hasShownPrompt = UserDefaults.standard.bool(forKey: hasShownMoveToApplicationsPromptKey)
+        if hasShownPrompt {
+            return
+        }
+        
+        // Check if already in Applications folder
+        if isInApplicationsFolder() {
+            return
+        }
+        
+        // Activate the app to ensure alerts can be shown
+        NSApp.activate(ignoringOtherApps: true)
+        
+        // Add a small delay to ensure the app is fully activated
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.askToMoveToApplications { shouldMove in
+                // Mark that we've shown the prompt (regardless of which option they chose)
+                UserDefaults.standard.set(true, forKey: self.hasShownMoveToApplicationsPromptKey)
+                
+                if shouldMove {
+                    self.moveToApplicationsAndRelaunch()
+                }
+            }
+        }
+    }
+    
+    private func isInApplicationsFolder() -> Bool {
+        let bundlePath = Bundle.main.bundlePath
+        return bundlePath.hasPrefix("/Applications")
+    }
+    
+    private func askToMoveToApplications(completion: @escaping (Bool) -> Void) {
+        let alert = NSAlert()
+        alert.messageText = "Move to Applications?"
+        alert.informativeText = "This app works best when placed in the Applications folder. ClipCache will reopen from Applications after moving."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Move")
+        alert.addButton(withTitle: "Cancel")
+        
+        let response = alert.runModal()
+        completion(response == .alertFirstButtonReturn)
+    }
+    
+    private func moveToApplicationsAndRelaunch() {
+        let fileManager = FileManager.default
+        let appPath = Bundle.main.bundlePath
+        let appName = (appPath as NSString).lastPathComponent
+        let systemDestPath = "/Applications/" + appName
+        
+        do {
+            // Remove old app if exists
+            if fileManager.fileExists(atPath: systemDestPath) {
+                try fileManager.removeItem(atPath: systemDestPath)
+            }
+            
+            // Copy app to /Applications
+            try fileManager.copyItem(atPath: appPath, toPath: systemDestPath)
+            
+            // Relaunch from Applications
+            let task = Process()
+            task.launchPath = "/usr/bin/open"
+            task.arguments = [systemDestPath]
+            task.launch()
+            
+            // Quit the original
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                NSApp.terminate(nil)
+            }
+            
+        } catch {
+            // Show simple error alert
+            let alert = NSAlert()
+            alert.messageText = "Unable to Move"
+            alert.informativeText = "ClipCache doesn't have permission to move itself to Applications. You can manually move it by dragging it to the Applications folder."
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
+    }
+    
     
     private func openAccessibilitySettings() {
         // Open System Settings/Preferences to Accessibility page
