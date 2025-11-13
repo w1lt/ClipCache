@@ -122,6 +122,12 @@ class ClipCacheManager: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             self.checkAndPromptToMoveToApplicationsIfNeeded()
         }
+        
+        // Start monitoring automatically on launch
+        // Use a small delay to ensure all initialization is complete
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.startMonitoring()
+        }
     }
     
     func checkAndPromptForPermissionsIfNeeded() {

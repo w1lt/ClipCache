@@ -12,7 +12,6 @@ struct ClipCacheApp: App {
                 .onAppear {
                     setupGlobalHotKeyHandler(manager: manager)
                     manager.checkAndPromptForPermissionsIfNeeded()
-                    manager.startMonitoring()
                 }
         } label: {
             HStack(spacing: 4) {
