@@ -1,17 +1,28 @@
-//
-//  ClipCacheApp.swift
-//  ClipCache
-//
-//  Created by Will Whitehead on 11/13/25.
-//
-
 import SwiftUI
 
 @main
 struct ClipCacheApp: App {
+    @StateObject private var manager = ClipCacheManager()
+
     var body: some Scene {
-        WindowGroup {
-            ContentView()
+        MenuBarExtra {
+            ClipCacheMenu()
+                .environmentObject(manager)
+                .onAppear {
+                    setupGlobalHotKeyHandler(manager: manager)
+                    manager.checkAndPromptForPermissionsIfNeeded()
+                    manager.startMonitoring()
+                }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "doc.on.doc")
+                    .imageScale(.small)
+                if !manager.menuBarTitle.isEmpty {
+                    Text(manager.menuBarTitle)
+                        .font(.system(size: 11))
+                }
+            }
         }
+        .menuBarExtraStyle(.window)
     }
 }
