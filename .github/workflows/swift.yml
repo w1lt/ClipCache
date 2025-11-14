@@ -48,7 +48,20 @@ jobs:
           git push origin ${{ steps.bump.outputs.new_tag }}
 
       # -----------------------------
-      # 4. Build the app
+      # 4A. Update Xcode Version (Info.plist)
+      # -----------------------------
+      - name: Update Xcode Version (Info.plist)
+        run: |
+          ver=${{ steps.bump.outputs.new_tag }}
+          pure="${ver#v}"   # remove v prefix for plist
+          plist="ClipCache/Info.plist"
+          echo "Updating $plist to version $pure"
+
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $pure" "$plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(date +%s)" "$plist"
+
+      # -----------------------------
+      # 4B. Build the app
       # -----------------------------
       - name: Select Xcode
         run: sudo xcode-select -switch /Applications/Xcode.app
