@@ -6,10 +6,23 @@ struct ClipCacheMenu: View {
     @EnvironmentObject var manager: ClipCacheManager
     @State private var isCapturingShortcut = false
     @State private var isCapturingClearShortcut = false
+    @State private var isCapturingRemoveLastShortcut = false
     @State private var isHoveringHeader = false
+    @State private var isAdvancedSettingsExpanded = false
+    @FocusState private var focusedField: FocusedField?
+    
+    enum FocusedField {
+        case copyWindowSeconds
+        case pasteCooldownMs
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    focusedField = nil
+                }
             // Header
             HStack(alignment: .firstTextBaseline) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -84,76 +97,133 @@ struct ClipCacheMenu: View {
                                 .font(.system(size: 10))
                                 .foregroundColor(.secondary)
                         }
+                        
+                        HStack(spacing: 6) {
+                            ShortcutCaptureView(
+                                keyCode: $manager.removeLastItemShortcutKey,
+                                modifiers: $manager.removeLastItemShortcutModifiers,
+                                isCapturing: $isCapturingRemoveLastShortcut
+                            )
+                            .fixedSize(horizontal: true, vertical: false)
+                            .onChange(of: manager.removeLastItemShortcutKey) { _, _ in
+                                manager.updateHotKey()
+                            }
+                            .onChange(of: manager.removeLastItemShortcutModifiers) { _, _ in
+                                manager.updateHotKey()
+                            }
+                            Text("Undo last copy")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        }
                     }
                     
                     // Capture Options
                     MenuSettingWithHelp("Capture Options", helpContent: {
                         HelpPopoverButton(
                             title: "Capture Options",
-                            description: "Choose what types of content to capture from your clipboard. Images captures screenshots and copied images. Text captures copied text content."
+                            description: "Choose what types of content to capture from your clipboard. Images & Files captures files, folders, screenshots, and copied images. Text captures copied text content."
                         )
                     }, settingContent: {
                         HStack(spacing: 16) {
-                            Toggle("Images", isOn: $manager.captureImages)
+                            Toggle("Images & Files", isOn: $manager.captureFilesAndImages)
                             Toggle("Text", isOn: $manager.captureText)
                         }
                     })
                     
-                    // Menu Bar Display
-                    MenuSetting("Menu Bar Display Options") {
-                        Toggle("No. of images in cache", isOn: $manager.showImageCountInMenuBar)
-                            .onChange(of: manager.showImageCountInMenuBar) { _, _ in
-                                manager.updateMenuBarTitle()
+                    // Advanced Settings
+                    VStack(alignment: .leading, spacing: 6) {
+                        Button {
+                            isAdvancedSettingsExpanded.toggle()
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: isAdvancedSettingsExpanded ? "chevron.down" : "chevron.right")
+                                    .font(.system(size: 9, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 12)
+                                Text("Advanced Settings")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.secondary)
                             }
-                        Toggle("Window timer countdown", isOn: $manager.showTimerInMenuBar)
-                            .onChange(of: manager.showTimerInMenuBar) { _, _ in
-                                manager.updateMenuBarTitle()
-                            }
+                        }
+                        .buttonStyle(.plain)
                     }
+                    .padding(.bottom, 4)
                     
-                    // Copy Window
-                    MenuSettingWithHelp("Copy Window Timer", bottomPadding: -2, helpContent: {
-                        HelpPopoverButton(
-                            title: "Copy Window",
-                            description: "When you copy the first item, a time window opens. Any copies within this window extend it and add to the cache. After the window closes, the cache stays available forever until you copy something new."
-                        )
-                    }, settingContent: {
-                        HStack(spacing: 8) {
-                            CustomSlider(value: $manager.copyWindowSeconds, in: 1...60, step: 1)
-                            TextField("", value: $manager.copyWindowSeconds, format: .number)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 45)
-                                .monospacedDigit()
-                            Text("s")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                                .frame(width: 12, alignment: .leading)
+                    if isAdvancedSettingsExpanded {
+                        // Menu Bar Display
+                        MenuSetting("Menu Bar Display Options") {
+                            Toggle("No. of images in cache", isOn: $manager.showImageCountInMenuBar)
+                                .onChange(of: manager.showImageCountInMenuBar) { _, _ in
+                                    manager.updateMenuBarTitle()
+                                }
+                            Toggle("Window timer countdown", isOn: $manager.showTimerInMenuBar)
+                                .onChange(of: manager.showTimerInMenuBar) { _, _ in
+                                    manager.updateMenuBarTitle()
+                                }
                         }
-                    })
-                    
-                    // Paste Cooldown
-                    MenuSettingWithHelp("Paste Cooldown", helpContent: {
-                        HelpPopoverButton(
-                            title: "Paste Cooldown",
-                            description: "The delay in milliseconds between pasting multiple items. Lower values paste faster but may cause issues with some applications. Higher values are more reliable but slower."
-                        )
-                    }, settingContent: {
-                        HStack(spacing: 8) {
-                            CustomSlider(value: $manager.pasteCooldownMs, in: 50...1000, step: 10)
-                            TextField("", value: $manager.pasteCooldownMs, format: .number)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 60)
-                                .monospacedDigit()
-                            Text("ms")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                                .frame(width: 20, alignment: .leading)
+                        
+                        // Copy Window
+                        MenuSettingWithHelp("Copy Window Time", bottomPadding: -2, helpContent: {
+                            HelpPopoverButton(
+                                title: "Copy Window",
+                                description: "When you copy the first item, a time window opens. Any copies within this window extend it and add to the cache. After the window closes, the cache stays available forever until you copy something new."
+                            )
+                        }, settingContent: {
+                            HStack(spacing: 4) {
+                                TextField("", value: $manager.copyWindowSeconds, format: .number)
+                                    .textFieldStyle(.roundedBorder)
+                                    .fixedSize()
+                                    .monospacedDigit()
+                                    .focused($focusedField, equals: .copyWindowSeconds)
+                                    .onSubmit {
+                                        focusedField = nil
+                                    }
+                                    .onKeyPress { keyPress in
+                                        if keyPress.key == .escape {
+                                            focusedField = nil
+                                            return .handled
+                                        }
+                                        return .ignored
+                                    }
+                                Text("seconds")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        })
+                        
+                        // Paste Cooldown
+                        MenuSettingWithHelp("Paste Cooldown", helpContent: {
+                            HelpPopoverButton(
+                                title: "Paste Cooldown",
+                                description: "The delay in milliseconds between pasting multiple items. Lower values paste faster but may cause issues with some applications. Higher values are more reliable but slower."
+                            )
+                        }, settingContent: {
+                            HStack(spacing: 4) {
+                                TextField("", value: $manager.pasteCooldownMs, format: .number)
+                                    .textFieldStyle(.roundedBorder)
+                                    .fixedSize()
+                                    .monospacedDigit()
+                                    .focused($focusedField, equals: .pasteCooldownMs)
+                                    .onSubmit {
+                                        focusedField = nil
+                                    }
+                                    .onKeyPress { keyPress in
+                                        if keyPress.key == .escape {
+                                            focusedField = nil
+                                            return .handled
+                                        }
+                                        return .ignored
+                                    }
+                                Text("ms")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        })
+                        
+                        // Open on Startup
+                        MenuSetting("Open on startup") {
+                            Toggle("Launch app at login", isOn: $manager.openOnStartup)
                         }
-                    })
-                    
-                    // Open on Startup
-                    MenuSetting("Open on startup") {
-                        Toggle("Launch app at login", isOn: $manager.openOnStartup)
                     }
                 }
             }
@@ -164,19 +234,15 @@ struct ClipCacheMenu: View {
                 .padding(.vertical, 4)
             
             VStack(alignment: .leading, spacing: 0) {
-                // Actions Section
-                MenuSection(title: "Actions", icon: "bolt") {
+                HStack {
                     Button {
-                        if manager.isMonitoring {
-                            manager.stopMonitoring()
-                        } else {
-                            manager.startMonitoring()
-                        }
+                        NSApp.terminate(nil)
                     } label: {
-                        Label(manager.isMonitoring ? "Pause Capturing" : "Start Capturing", 
-                              systemImage: manager.isMonitoring ? "pause.circle.fill" : "play.circle.fill")
+                        Label("Quit", systemImage: "power")
+                            .foregroundColor(.red)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    Spacer()
                     
                     Button {
                         manager.clearCache()
@@ -184,35 +250,6 @@ struct ClipCacheMenu: View {
                         Label("Clear Cache", systemImage: "trash")
                     }
                     .disabled(manager.imageCount == 0)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            
-            Divider()
-                .padding(.vertical, 4)
-            
-            VStack(alignment: .leading, spacing: 0) {
-                // Quit and Buy me a coffee
-                HStack {
-                    Button {
-                        NSApp.terminate(nil)
-                    } label: {
-                        Label("Quit", systemImage: "power")
-                    }
-                    
-                    Spacer()
-                    
-                    Button {
-                        if let url = URL(string: "https://venmo.willwhitehead.com/") {
-                            NSWorkspace.shared.open(url)
-                        }
-                    } label: {
-                        Text("buy me a redbull")
-                            .font(.system(size: 12))
-                    }
-                   
                 }
             }
             .padding(.horizontal, 16)
@@ -220,6 +257,11 @@ struct ClipCacheMenu: View {
             .padding(.bottom, 12)
         }
         .frame(width: 280)
+        .background(Color.clear)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            focusedField = nil
+        }
     }
 }
 
@@ -256,7 +298,7 @@ struct MenuSection<Content: View>: View {
                     Button {
                         manager.resetToDefaultSettings()
                     } label: {
-                        Text("Reset to Default")
+                        Text("Restore Defaults")
                             .font(.system(size: 10, weight: .medium))
                     }
                     .buttonStyle(.plain)
