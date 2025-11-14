@@ -1,3 +1,37 @@
+# --------------------------------------------------------------------
+# Auto Build & Release ClipCache
+#
+# This GitHub Actions workflow implements a professional indie-mac-dev
+# release pipeline (Versioning Method: "Level 2 — Commit Version Bump")
+#
+# What this workflow does:
+#
+# 1. Detects the latest Git tag (e.g. v1.2.3)
+# 2. Automatically increments the PATCH version (→ v1.2.4)
+# 3. Updates Info.plist:
+#      - CFBundleShortVersionString = 1.2.4
+#      - CFBundleVersion = unix timestamp (build number)
+# 4. Commits the updated Info.plist back to the main branch
+# 5. Creates and pushes a new Git tag "v1.2.4"
+# 6. Builds the macOS Release version of ClipCache using Xcode
+# 7. Packages the .app into a .zip file
+# 8. Creates a GitHub Release for the new version
+# 9. Uploads the built .zip as a release asset
+#
+# Benefits of this workflow:
+# - Your repo always reflects the exact version your users download
+# - Local builds stay in sync after a git pull
+# - Fully automated semantic version handling (patch bump)
+# - Clean and predictable release history
+# - Bar none, the most common setup used by professional indie mac devs
+#
+# After each release:
+# - A version-bump commit appears in history
+# - A new GitHub Release is published automatically
+# - You only need to `git pull` locally when continuing development
+#
+# --------------------------------------------------------------------
+
 name: Auto Build & Release ClipCache
 
 on:
@@ -10,21 +44,25 @@ jobs:
     runs-on: macos-latest
 
     steps:
+      # -----------------------------
+      # 0. Checkout repo with full history
+      # -----------------------------
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # needed to get existing tags
+          fetch-depth: 0
 
       # -----------------------------
-      # 1. Get latest version tag
+      # 1. Get the latest version tag
       # -----------------------------
       - name: Get latest tag
         id: get_tag
         run: |
           tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "tag=$tag" >> $GITHUB_OUTPUT
+          echo "Latest tag: $tag"
 
       # -----------------------------
-      # 2. Auto-increment patch
+      # 2. Auto-increment PATCH version
       # -----------------------------
       - name: Bump patch version
         id: bump
@@ -35,25 +73,16 @@ jobs:
           patch=$((patch+1))
           new="v$major.$minor.$patch"
           echo "new_tag=$new" >> $GITHUB_OUTPUT
-          echo "New version = $new"
+          echo "Bumping version to: $new"
 
       # -----------------------------
-      # 3. Create and push tag
-      # -----------------------------
-      - name: Create & push tag
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git tag ${{ steps.bump.outputs.new_tag }}
-          git push origin ${{ steps.bump.outputs.new_tag }}
-
-      # -----------------------------
-      # 4A. Update Xcode Version (Info.plist)
+      # 3. Update Info.plist with new version
       # -----------------------------
       - name: Update Xcode Version (Info.plist)
         run: |
           ver=${{ steps.bump.outputs.new_tag }}
-          pure="${ver#v}"   # remove v prefix for plist
+          pure="${ver#v}"  # convert v1.2.4 → 1.2.4
+
           plist="ClipCache/Info.plist"
           echo "Updating $plist to version $pure"
 
@@ -61,7 +90,27 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(date +%s)" "$plist"
 
       # -----------------------------
-      # 4B. Build the app
+      # 4. Commit version bump back to main
+      # -----------------------------
+      - name: Commit & push version bump
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add ClipCache/Info.plist
+          git commit -m "Bump version to ${{ steps.bump.outputs.new_tag }}"
+          git push origin main
+
+      # -----------------------------
+      # 5. Create & push the new Git tag
+      # -----------------------------
+      - name: Create and push tag
+        run: |
+          git tag ${{ steps.bump.outputs.new_tag }}
+          git push origin ${{ steps.bump.outputs.new_tag }}
+
+      # -----------------------------
+      # 6. Build the Release .app
       # -----------------------------
       - name: Select Xcode
         run: sudo xcode-select -switch /Applications/Xcode.app
@@ -74,7 +123,7 @@ jobs:
             -derivedDataPath build
 
       # -----------------------------
-      # 5. Package app
+      # 7. Package the app as a .zip
       # -----------------------------
       - name: Package .app
         run: |
@@ -85,7 +134,7 @@ jobs:
           zip -r ClipCache-${{ steps.bump.outputs.new_tag }}.zip *.app
 
       # -----------------------------
-      # 6. Create GitHub Release
+      # 8. Publish GitHub Release + upload asset
       # -----------------------------
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
