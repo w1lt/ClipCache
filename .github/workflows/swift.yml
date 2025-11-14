@@ -1,0 +1,36 @@
+name: Build & Release macOS App
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -switch /Applications/Xcode.app
+
+      - name: Build Release
+        run: |
+          xcodebuild \
+            -scheme "ClipCache" \
+            -configuration Release \
+            -derivedDataPath build
+
+      - name: Package .app
+        run: |
+          APP_PATH=$(find build -type d -name "*.app" | head -n 1)
+          mkdir release
+          zip -r release/ClipCache.zip "$APP_PATH"
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/ClipCache.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
