@@ -10,6 +10,8 @@
 	<string>1.0.3</string>
 	<key>CFBundleVersion</key>
 	<string>1763152450</string>
+	<key>LSUIElement</key>
+	<true/>
 	<key>NSMainStoryboardFile</key>
 	<string></string>
 	<key>NSPrincipalClass</key>
