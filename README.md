@@ -8,11 +8,10 @@
 
 ## ‼️ Installation
 
-1. Download the latest release
-2. **Important**: If macOS says the app is not recognized, right-click the app and select "Open" to bypass the security warning
-3. Launch ClipCache
-4. Grant accessibility permissions when prompted
-5. Start copying and pasting!
+1. Download and unzip the latest release.
+2. If macOS blocks the app, go to **System Settings → Privacy & Security → Allow Anyway**, then reopen ClipCache.
+3. Grant accessibility permissions when prompted.
+4. Start copying and pasting!
 
 ## ⚠️ Setting Up Screenshots to Copy to Clipboard
 
