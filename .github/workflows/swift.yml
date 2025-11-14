@@ -1,17 +1,55 @@
-name: Build & Release macOS App
+name: Auto Build & Release ClipCache
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
 
 jobs:
-  build:
+  release:
     runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # needed to get existing tags
 
+      # -----------------------------
+      # 1. Get latest version tag
+      # -----------------------------
+      - name: Get latest tag
+        id: get_tag
+        run: |
+          tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+
+      # -----------------------------
+      # 2. Auto-increment patch
+      # -----------------------------
+      - name: Bump patch version
+        id: bump
+        run: |
+          ver="${{ steps.get_tag.outputs.tag }}"
+          ver="${ver#v}"  # remove leading v
+          IFS='.' read -r major minor patch <<< "$ver"
+          patch=$((patch+1))
+          new="v$major.$minor.$patch"
+          echo "new_tag=$new" >> $GITHUB_OUTPUT
+          echo "New version = $new"
+
+      # -----------------------------
+      # 3. Create and push tag
+      # -----------------------------
+      - name: Create & push tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag ${{ steps.bump.outputs.new_tag }}
+          git push origin ${{ steps.bump.outputs.new_tag }}
+
+      # -----------------------------
+      # 4. Build the app
+      # -----------------------------
       - name: Select Xcode
         run: sudo xcode-select -switch /Applications/Xcode.app
 
@@ -22,15 +60,25 @@ jobs:
             -configuration Release \
             -derivedDataPath build
 
+      # -----------------------------
+      # 5. Package app
+      # -----------------------------
       - name: Package .app
         run: |
           APP_PATH=$(find build -type d -name "*.app" | head -n 1)
           mkdir release
-          zip -r release/ClipCache.zip "$APP_PATH"
+          cp -R "$APP_PATH" release/
+          cd release
+          zip -r ClipCache-${{ steps.bump.outputs.new_tag }}.zip *.app
 
+      # -----------------------------
+      # 6. Create GitHub Release
+      # -----------------------------
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
         with:
-          files: release/ClipCache.zip
+          tag_name: ${{ steps.bump.outputs.new_tag }}
+          name: ${{ steps.bump.outputs.new_tag }}
+          files: release/ClipCache-${{ steps.bump.outputs.new_tag }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
