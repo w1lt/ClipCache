@@ -9,7 +9,7 @@
 ## ‼️ Installation
 
 1. Download and unzip the latest release.
-2. If macOS blocks the app, go to **System Settings → Privacy & Security → Allow Anyway**, then reopen ClipCache.
+2. If macOS blocks the app, click "Done", go to **System Settings → Privacy & Security → Allow Anyway**, then reopen ClipCache.
 3. Grant accessibility permissions when prompted.
 4. Start copying and pasting!
 
