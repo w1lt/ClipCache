@@ -131,7 +131,7 @@ jobs:
           mkdir release
           cp -R "$APP_PATH" release/
           cd release
-          zip -r ClipCache-${{ steps.bump.outputs.new_tag }}.zip *.app
+          zip -r ClipCache.zip *.app
 
       # -----------------------------
       # 8. Publish GitHub Release + upload asset
@@ -141,6 +141,6 @@ jobs:
         with:
           tag_name: ${{ steps.bump.outputs.new_tag }}
           name: ${{ steps.bump.outputs.new_tag }}
-          files: release/ClipCache-${{ steps.bump.outputs.new_tag }}.zip
+          files: release/ClipCache.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
