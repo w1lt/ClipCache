@@ -7,9 +7,9 @@
 	<key>CFBundleName</key>
 	<string>ClipCache</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.6</string>
+	<string>1.0.7</string>
 	<key>CFBundleVersion</key>
-	<string>1763165683</string>
+	<string>1763165856</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSMainStoryboardFile</key>
