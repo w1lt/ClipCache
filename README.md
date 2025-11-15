@@ -1,6 +1,6 @@
 # ClipCache
 
-#### ClipCache is a lightweight macOS menu bar app that lets you copy multiple images and text snippets, then paste them all at once with a single keyboard shortcut. It works alongside your native copy/paste shortcuts without replace them.
+ClipCache is a lightweight macOS menu bar app that lets you copy multiple images and text snippets, then paste them all at once with a single keyboard shortcut. It works alongside your native copy/paste shortcuts without replace them.
 
 <p align="center">
   <img src="image.png" height="360" />
